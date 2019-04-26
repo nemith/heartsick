@@ -38,7 +38,7 @@ func gitClone(uri, dest string) error {
 	return cmdErr(cmd.Run())
 }
 
-var errGitAlreadyInitalized = errors.New("git already initialized")
+// var errGitAlreadyInitalized = errors.New("git already initialized")
 
 func gitInit(path string) error {
 	cmd := exec.Command("git", "init")

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -156,7 +157,7 @@ func init() {
 	)
 }
 
-func castleFromArgs(args []string) castle {
+func castleFromArgs(args []string) *castle {
 	var name = defaultCastle
 	if len(args) > 0 {
 		name = args[0]
@@ -168,13 +169,15 @@ func castleFromArgs(args []string) castle {
 	return castle
 }
 
-func mustAllCastles() []castle {
+func mustAllCastles() []*castle {
 	castles, err := allCastles()
 	if err != nil {
 		fatalf("failed to find castles: %s", err)
 	}
 	return castles
 }
+
+var githubPattern = regexp.MustCompile(`^([A-Za-z0-9_-]+/[A-Za-z0-9_-]+)$`)
 
 func cmdClone(cmd *cobra.Command, args []string) {
 	uri := args[0]
@@ -194,7 +197,7 @@ func cmdClone(cmd *cobra.Command, args []string) {
 		castleName = strings.TrimSuffix(filepath.Base(uri), ".git")
 	}
 
-	dest := filepath.Join(castlePath, castleName)
+	dest := filepath.Join(castlePath(), castleName)
 
 	if _, err := os.Stat(dest); err == nil {
 		status(colorBrBlue, "exist", dest)
@@ -217,8 +220,8 @@ func cmdCommit(cmd *cobra.Command, args []string) {
 
 	}
 
-	status(colorBrGreen, "git commit all", string(castle))
-	if err := gitCommitAll(castle.basePath(), commitMsg); err != nil {
+	status(colorBrGreen, "git commit all", castle.name)
+	if err := gitCommitAll(castle.path, commitMsg); err != nil {
 		fatalf("failed to commit: %v", err)
 	}
 }
@@ -226,20 +229,20 @@ func cmdCommit(cmd *cobra.Command, args []string) {
 func cmdDiff(cmd *cobra.Command, args []string) {
 	castle := castleFromArgs(args)
 
-	status(colorBrGreen, "git diff", string(castle))
-	if err := gitDiff(castle.basePath()); err != nil {
+	status(colorBrGreen, "git diff", castle.name)
+	if err := gitDiff(castle.path); err != nil {
 		fatalf("failed to diff: %v", err)
 	}
 }
 
-func execHelper(castle castle, args []string) {
+func execHelper(castle *castle, args []string) {
 	var cmdArgs []string
 	if len(args) > 1 {
 		cmdArgs = args[1:]
 	}
-	statusf(colorBrGreen, "exec", "%s %s in castle '%s'", args[0], strings.Join(cmdArgs, " "), string(castle))
+	statusf(colorBrGreen, "exec", "%s %s in castle '%s'", args[0], strings.Join(cmdArgs, " "), castle.name)
 	c := exec.Command(args[0], cmdArgs...)
-	c.Dir = castle.basePath()
+	c.Dir = castle.path
 	c.Stdin = os.Stdin
 	c.Stderr = os.Stderr
 	c.Stdout = os.Stdout
@@ -389,10 +392,10 @@ func cmdList(cmd *cobra.Command, args []string) {
 	for _, c := range mustAllCastles() {
 		remote, err := c.remote()
 		if err != nil {
-			statusf(colorBrRed, string(c), "failed to get remote uri: %v", err)
+			statusf(colorBrRed, c.name, "failed to get remote uri: %v", err)
 			continue
 		}
-		status(colorBrCyan, string(c), remote)
+		status(colorBrCyan, c.name, remote)
 	}
 }
 
@@ -405,8 +408,8 @@ func cmdOpen(cmd *cobra.Command, args []string) {
 	castle := castleFromArgs(args)
 
 	statusf(colorBrGreen, editor, "Opening the root directory of castle '%s' in editor '%s'", castle, editor)
-	c := exec.Command(editor, castle.basePath())
-	c.Dir = castle.basePath()
+	c := exec.Command(editor, castle.path)
+	c.Dir = castle.path
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -419,15 +422,15 @@ func cmdOpen(cmd *cobra.Command, args []string) {
 
 func cmdPath(cmd *cobra.Command, args []string) {
 	castle := castleFromArgs(args)
-	fmt.Println(castle.basePath())
+	fmt.Println(castle.path)
 }
 
 func cmdPull(cmd *cobra.Command, args []string) {
-	var castles []castle
+	var castles []*castle
 	if flagAll {
 		castles = mustAllCastles()
 	} else {
-		castles = []castle{castleFromArgs(args)}
+		castles = []*castle{castleFromArgs(args)}
 	}
 
 	var fail bool
@@ -464,9 +467,9 @@ func cmdRC(cmd *cobra.Command, args []string) {
 func cmdShell(cmd *cobra.Command, args []string) {
 	castle := castleFromArgs(args)
 
-	statusf(colorBrGreen, "shell", "Opening new shell in '%s To return to the original one exit from the new shell.", castle.basePath())
+	statusf(colorBrGreen, "shell", "Opening new shell in '%s To return to the original one exit from the new shell.", castle.path)
 	c := exec.Command(os.Getenv("SHELL"))
-	c.Dir = castle.basePath()
+	c.Dir = castle.path
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -479,8 +482,8 @@ func cmdShell(cmd *cobra.Command, args []string) {
 func cmdStatus(cmd *cobra.Command, args []string) {
 	castle := castleFromArgs(args)
 
-	statusf(colorBrGreen, "git status", "%s for castle '%s", castle.basePath(), castle)
-	if err := gitStatus(castle.basePath()); err != nil {
+	statusf(colorBrGreen, "git status", "%s for castle '%s", castle.path, castle.name)
+	if err := gitStatus(castle.path); err != nil {
 		fatalf("failed to get status: %v", err)
 	}
 }

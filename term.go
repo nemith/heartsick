@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -32,14 +30,4 @@ func errorf(f string, v ...interface{}) {
 func fatalf(f string, v ...interface{}) {
 	errorf(f, v...)
 	os.Exit(1)
-}
-
-func readChar(r io.Reader) (rune, error) {
-	reader := bufio.NewReader(os.Stdin)
-	char, _, err := reader.ReadRune()
-	if err != nil {
-		return 0, err
-	}
-
-	return char, err
 }

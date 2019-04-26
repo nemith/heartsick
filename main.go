@@ -15,7 +15,9 @@ var (
 )
 
 func main() {
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		fatalf("failed to start command: %v", err)
+	}
 }
 
 func mustHomeDir() string {
