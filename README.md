@@ -1,5 +1,7 @@
 # heartsick :broken_heart:
 
+[![CircleCI](https://circleci.com/gh/nemith/heartsick.svg?style=svg)](https://circleci.com/gh/nemith/heartsick)
+
 **NOTE: This isn't yet complete and probably shouldn't be used unless you are brave.**
 
 An direct replacement of [homesick](github.com/technicalpickles/homesick) but written in [Go](http://golang.org).  This means zero runtime requirement, just download a binary, run and go on your way.
