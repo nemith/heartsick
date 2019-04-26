@@ -1,7 +1,7 @@
 # heartsick :broken_heart:
 
-[![CircleCI](https://circleci.com/gh/nemith/heartsick.svg?style=svg)](https://circleci.com/gh/nemith/heartsick)
-[![codecov](https://codecov.io/gh/nemith/heartsick/branch/master/graph/badge.svg)](https://codecov.io/gh/nemith/heartsick)
+[![CircleCI](https://img.shields.io/circleci/project/github/nemith/heartsick/master.svg)](https://circleci.com/gh/nemith/heartsick)
+[![codecov](https://img.shields.io/codecov/c/gh/nemith/heartsick.svg)](https://codecov.io/gh/nemith/heartsick)
 
 **NOTE: This isn't yet complete and probably shouldn't be used unless you are brave.**
 
