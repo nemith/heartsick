@@ -1,17 +1,92 @@
 package main
 
 import (
+	"archive/zip"
+	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
 
-func testHomedir(t *testing.T, base string) {
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		path := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
+		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("%s: illegal file path", path)
+		}
+
+		if f.FileInfo().IsDir() {
+			// Make Folder
+			if err := os.MkdirAll(path, os.ModePerm); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// Make File
+		if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func setupHomedir(t *testing.T, base string) (string, func()) {
 	t.Helper()
-	homeDir = filepath.Join("testdata", base)
-	t.Logf("setting homedir to %s", homeDir)
+
+	homeZip := filepath.Join("testdata", base+".zip")
+	tmpHomeDir, err := ioutil.TempDir("", base)
+	if err != nil {
+		t.Errorf("failed to create homedir: %v", err)
+	}
+
+	if err := unzip(homeZip, tmpHomeDir); err != nil {
+		t.Errorf("failed ot unzip homedir: %v", err)
+	}
+
+	cleanupFn := func() {
+		if err := os.RemoveAll(tmpHomeDir); err != nil {
+			t.Logf("failed to remove temp homedir: %v", err)
+		}
+	}
+
+	t.Logf("setting homedir to %s", tmpHomeDir)
+	homeDir = tmpHomeDir
+
+	return homeDir, cleanupFn
 }
 
 func TestLoadCastle(t *testing.T) {
@@ -30,7 +105,8 @@ func TestLoadCastle(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.home+":"+tc.castle, func(t *testing.T) {
-			testHomedir(t, tc.home)
+			tmpHomePath, cleanup := setupHomedir(t, tc.home)
+			defer cleanup()
 
 			got, err := loadCastle(tc.castle)
 			if err != nil {
@@ -48,7 +124,7 @@ func TestLoadCastle(t *testing.T) {
 				t.Errorf("castle name is wrong (want '%s', got '%s')", tc.castle, got.name)
 			}
 
-			wantPath, _ := filepath.Abs(filepath.Join("testdata", tc.home, ".homesick/repos", tc.castle))
+			wantPath, _ := filepath.Abs(filepath.Join(tmpHomePath, ".homesick/repos", tc.castle))
 			if got.path != wantPath {
 				t.Errorf("castle path wrong (want: '%s', got: '%s)", wantPath, got.path)
 			}
@@ -69,7 +145,8 @@ func TestAllCastles(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.home, func(t *testing.T) {
-			testHomedir(t, tc.home)
+			_, cleanup := setupHomedir(t, tc.home)
+			defer cleanup()
 
 			got, err := allCastles()
 			if err != nil {
@@ -126,12 +203,13 @@ func TestCastleLinkables(t *testing.T) {
 				".dir3/.subdir1/.file1",
 				".dir3/.subdir1/.file2",
 			}, false},
-		{"home1", "private", []string{".file1"}, false},
+		{"home1", "private", []string{".file1", ".file2"}, false},
 	}
 
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%s:%s", tc.home, tc.castle), func(t *testing.T) {
-			testHomedir(t, tc.home)
+			_, cleanup := setupHomedir(t, tc.home)
+			defer cleanup()
 
 			castle, err := loadCastle(tc.castle)
 			if err != nil {
@@ -163,7 +241,8 @@ func TestCastleSubdirs(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%s:%s", tc.home, tc.castle), func(t *testing.T) {
-			testHomedir(t, tc.home)
+			_, cleanup := setupHomedir(t, tc.home)
+			defer cleanup()
 
 			castle, err := loadCastle(tc.castle)
 			if err != nil {
@@ -181,4 +260,16 @@ func TestCastleSubdirs(t *testing.T) {
 
 		})
 	}
+}
+
+func TestMain(m *testing.M) {
+	// overwrite homedir to make sure tests don't do anything stupid
+	tmpHomeDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create failback homedir: %v", err))
+	}
+	homeDir = tmpHomeDir
+
+	flag.Parse()
+	os.Exit(m.Run())
 }
