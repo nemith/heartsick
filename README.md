@@ -5,7 +5,7 @@
 
 **NOTE: This isn't yet complete and probably shouldn't be used unless you are brave.**
 
-An direct replacement of [homesick](github.com/technicalpickles/homesick) but written in [Go](http://golang.org).  This means zero runtime requirement, just download a binary, run and go on your way.
+A direct replacement of [homesick](https://github.com/technicalpickles/homesick) but written in [Go](http://golang.org).  This means zero runtime requirement, just download a binary, run and go on your way.
 
 ## Chages from homesick
  * Some aliases were added that I always type:
