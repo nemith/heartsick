@@ -216,7 +216,7 @@ func TestCastleLinkables(t *testing.T) {
 				t.Fatalf("failed to load castle: %v", err)
 			}
 
-			got, err := castle.linkables()
+			got, _, err := castle.linkables()
 			if err != nil && !tc.fail {
 				t.Errorf("unexpected error: %v", err)
 			}

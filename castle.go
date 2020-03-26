@@ -145,28 +145,28 @@ Loop:
 // linkables will find all files/directories that are eligible to be linked.
 // Only top level dir/files are linked a long with any sub-directories found in
 // the .homesick_subdir file at the top of the castle.
-func (c castle) linkables() ([]string, error) {
+func (c castle) linkables() ([]string, []string, error) {
 	subdirs, err := c.subdirs()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	baseHome := c.homePath()
 	links, err := linkables(baseHome, baseHome, subdirs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// find all linkables for the subdirs
 	for _, subdir := range subdirs {
 		subdirLinks, err := linkables(filepath.Join(baseHome, subdir), baseHome, subdirs)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		links = append(links, subdirLinks...)
 	}
 
-	return links, nil
+	return links, subdirs, nil
 }
 
 // subdirs will read the .homesick_subdir file from the castle and return the

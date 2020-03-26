@@ -342,9 +342,29 @@ func conflictPrompt(oldfile, newfile string) (skip bool, yesAll bool) {
 func cmdLink(cmd *cobra.Command, args []string) {
 	castle := castleFromArgs(args)
 
-	links, err := castle.linkables()
+	links, subdirs, err := castle.linkables()
 	if err != nil {
 		fatalf("failed to find links: %v", err)
+	}
+
+	for _, subdir := range subdirs {
+		subdir := filepath.Join(homeDir, subdir)
+
+		err := os.MkdirAll(subdir, 0755)
+		if os.IsExist(err) {
+			fi, err := os.Lstat(subdir)
+			if err != nil {
+				fatalf("failed to read subdir '%s': %v", subdir, err)
+			}
+
+			if !fi.IsDir() {
+				fatalf("subdir '%s' already exists but isn't a directory", subdir)
+			}
+			status(colorBrBlue, "exists", subdir)
+		} else if err != nil {
+			fatalf("failed to create subdir '%s': %v", subdir, err)
+		}
+		status(colorBrGreen, "mkdir", subdir)
 	}
 
 	castleHome := castle.homePath()
