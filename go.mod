@@ -1,4 +1,4 @@
-module github.com/nemith/heartsick
+module nemith.io/heartsick
 
 go 1.14
 
